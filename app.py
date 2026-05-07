@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import os
+from groq import Groq
 from data_cleaning import df_2025, df_1996
 
 st.set_page_config(page_title="NBA Player Performance Tracker", layout="wide")
@@ -41,7 +43,7 @@ filtered_df = combined[
 # --------------------------------------------------
 # Tabs
 # --------------------------------------------------
-tab_table, tab_stats, tab_viz = st.tabs(["Table", "Statistics", "Visualizations"])
+tab_table, tab_stats, tab_viz, tab_ai = st.tabs(["Table", "Statistics", "Visualizations", "Ask AI"])
 
 # --------------------------------------------------
 # Table tab
@@ -221,4 +223,47 @@ with tab_viz:
         title="3-Point % Distribution Across Eras",
     )
     st.plotly_chart(hist_fig, use_container_width=True)
+
+# --------------------------------------------------
+# Ask AI tab
+# --------------------------------------------------
+with tab_ai:
+    st.subheader("Ask AI About Your Filtered NBA Data")
+
+    api_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+    question = st.text_area(
+        "Ask a question",
+        placeholder="Example: Compare average assists and steals by position for the selected seasons.",
+        height=120,
+    )
+
+    if st.button("Ask Groq"):
+        if not api_key:
+            st.error("Missing GROQ_API_KEY. Add it to Streamlit secrets or environment variables.")
+        elif not question.strip():
+            st.warning("Please enter a question first.")
+        else:
+            with st.spinner("Thinking..."):
+                try:
+                    client = Groq(api_key=api_key)
+                    context_summary = filtered_df.describe(include="all").fillna("").to_string()
+                    prompt = (
+                        "You are an NBA analytics assistant. "
+                        "Use the provided filtered dataset summary to answer the user's question. "
+                        "If information is missing, state that clearly.\n\n"
+                        f"Dataset summary:\n{context_summary}\n\n"
+                        f"User question:\n{question}"
+                    )
+                    response = client.chat.completions.create(
+                        model="llama-3.1-8b-instant",
+                        messages=[
+                            {"role": "system", "content": "Answer clearly and concisely for a basketball data app user."},
+                            {"role": "user", "content": prompt},
+                        ],
+                        temperature=0.3,
+                    )
+                    st.markdown("### Answer")
+                    st.write(response.choices[0].message.content)
+                except Exception as e:
+                    st.error(f"Groq request failed: {e}")
     
