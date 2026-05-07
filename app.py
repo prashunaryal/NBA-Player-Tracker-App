@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+from pathlib import Path
+import tomllib
 from groq import Groq
 from data_cleaning import df_2025, df_1996
 
@@ -230,7 +232,18 @@ with tab_viz:
 with tab_ai:
     st.subheader("Ask AI About Your Filtered NBA Data")
 
-    api_key = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        try:
+            api_key = st.secrets["GROQ_API_KEY"]
+        except Exception:
+            api_key = None
+    if not api_key:
+        secrets_path = Path(__file__).resolve().parent / ".streamlit" / "secrets.toml"
+        if secrets_path.exists():
+            with open(secrets_path, "rb") as f:
+                local_secrets = tomllib.load(f)
+            api_key = local_secrets.get("GROQ_API_KEY")
     question = st.text_area(
         "Ask a question",
         placeholder="Example: Compare average assists and steals by position for the selected seasons.",
