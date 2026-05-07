@@ -201,12 +201,14 @@ with tab_viz:
         )
         st.plotly_chart(blk_fig, use_container_width=True)
 
+    ast_box_data = filtered_df[["Pos", "AST", "Season"]].copy()
     box_fig = px.box(
-        filtered_df,
+        ast_box_data,
         x="Pos",
-        y="PTS",
+        y="AST",
         color="Season",
-        title="Points Per Game Distribution by Position",
+        title="Assists Per Game Distribution by Position",
+        labels={"Pos": "Position", "AST": "Assists Per Game"},
     )
     st.plotly_chart(box_fig, use_container_width=True)
 
